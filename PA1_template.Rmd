@@ -4,22 +4,87 @@ output:
   html_document:
     keep_md: true
 ---
-
-
+```{r echo=FALSE, results="hide"}
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(stringr)
+library(ggplot2)
+options(scipen=7)
+```
 ## Loading and preprocessing the data
-
+``` {r}
+df <- read.csv("activity.csv")
+df <- df %>% 
+        mutate(date = ymd(date)) %>%
+        mutate(interval = str_pad(interval, 4, pad="0")) %>%
+        mutate(interval = sub("(^\\d\\d)", "\\1:", interval)) %>%
+        mutate(interval = parse_date_time(interval, "%H:%M"))
+head(df)
+```
 
 
 ## What is mean total number of steps taken per day?
 
+The total number of steps taken per day is as shown in the following chart, for the first five days, at least:  
+``` {r}
+dfp <- df %>% 
+        filter(!is.na(steps)) %>% 
+        group_by(date) %>%
+        summarize(total_steps = sum(steps))
+print(head(dfp))
+```
 
+A histogram showing this data is as follows:  
+```{r}
+qplot(data = dfp, x = total_steps)
+```
 
-## What is the average daily activity pattern?
+As can be seen in the summary table below, the average number of steps taken per day is `r as.integer(mean(dfp$total_steps))` and the median is `r quantile(dfp$total_steps, probs = 0.5)`.
+```{r}
+summary(dfp)
+```
 
+## What is the average daily activity pattern?  
+The time series plot of the average number of steps taken by time interval across the number of days is as follows:  
+``` {r}
+dfs <- df %>% 
+        filter(!is.na(steps)) %>% 
+        group_by(interval) %>% 
+        summarize(avg_steps=mean(steps))
+qplot(data=dfs, x=interval, y=avg_steps, geom="line")
+```  
 
+The time interval containing the maximum number of steps is `r dfs %>% filter(avg_steps==max(avg_steps)) %>% select(interval)`.
 
-## Imputing missing values
+## Imputing missing values  
+The number of missing values in the dataset is `r nrow(filter(df, is.na(steps)))`.
 
+To impute the missing values, I will apply the mean for the time of day across all days.  
+```{r}
+dfn <- left_join(df, dfs, by=c("interval"="interval")) %>%
+        do(mutate(., steps = ifelse(is.na(steps), avg_steps, steps))) %>%
+        select(-avg_steps)
+```  
+[See here for usage of "do" in mutate](https://github.com/hadley/dplyr/issues/464)
 
+``` {r}
+dfp2 <- dfn %>% 
+        group_by(date) %>%
+        summarize(total_steps = sum(steps))
+print(head(dfp2))
+```
+
+A histogram showing this data is as follows:  
+```{r}
+qplot(data = dfp2, x = total_steps)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+dfl <- df %>% 
+        filter(!is.na(steps)) %>% 
+        mutate(weekday = ifelse(wday(date, label = TRUE) %in% c("Sat", "Sun"), "weekend", "weekday")) %>%
+        group_by(interval, weekday) %>%
+        summarize(mean_steps = mean(steps))
+```
