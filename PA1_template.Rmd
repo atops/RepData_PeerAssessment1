@@ -4,17 +4,26 @@ output:
   html_document:
     keep_md: true
 ---
+``` {r global_options, warning=FALSE, message=FALSE}
+```
+
 ```{r echo=FALSE, results="hide"}
 library(dplyr)
 library(tidyr)
 library(lubridate)
 library(stringr)
 library(ggplot2)
+library(scales)
+library(lattice)
 options(scipen=7)
 ```
-## Loading and preprocessing the data
-``` {r}
+## Loading and preprocessing the data  
+(1) Load the data  
+``` {r load the data}
 df <- read.csv("activity.csv")
+```  
+(2) Process/transform
+``` {r process/transform}
 df <- df %>% 
         mutate(date = ymd(date)) %>%
         mutate(interval = str_pad(interval, 4, pad="0")) %>%
@@ -26,49 +35,69 @@ head(df)
 
 ## What is mean total number of steps taken per day?
 
-The total number of steps taken per day is as shown in the following chart, for the first five days, at least:  
-``` {r}
+(1) The total number of steps taken per day is as shown in the following chart, for the first five days, at least:  
+``` {r steps per day 1}
 dfp <- df %>% 
         filter(!is.na(steps)) %>% 
         group_by(date) %>%
         summarize(total_steps = sum(steps))
 print(head(dfp))
-```
+```  
+(2) A histogram showing this data is as follows:  
+```{r histogram 1}
+qplot(data = dfp, x = total_steps, xlab = "Number of daily steps")
+```  
 
-A histogram showing this data is as follows:  
-```{r}
-qplot(data = dfp, x = total_steps)
-```
+(3) The average number of steps taken per day is `r as.integer(mean(dfp$total_steps))` and the median is `r quantile(dfp$total_steps, probs = 0.5)` as can be seen in the summary table below.  
 
-As can be seen in the summary table below, the average number of steps taken per day is `r as.integer(mean(dfp$total_steps))` and the median is `r quantile(dfp$total_steps, probs = 0.5)`.
-```{r}
+Mean:  
+```{r mean}
+as.integer(mean(dfp$total_steps))
+```  
+Median:  
+``` {r median}
+quantile(dfp$total_steps, probs = 0.5)
+```  
+Summary Table:  
+``` {r summary table}
 summary(dfp)
 ```
 
 ## What is the average daily activity pattern?  
-The time series plot of the average number of steps taken by time interval across the number of days is as follows:  
-``` {r}
+(1) The time series plot of the average number of steps taken by time interval across the number of days is as follows:  
+``` {r time series of daily steps}
 dfs <- df %>% 
         filter(!is.na(steps)) %>% 
         group_by(interval) %>% 
         summarize(avg_steps=mean(steps))
-qplot(data=dfs, x=interval, y=avg_steps, geom="line")
+qplot(data = dfs, x = interval, y = avg_steps, geom = "line", 
+      ylab = "Average number of steps per day", 
+      xlab = "Time interval") + 
+        scale_x_datetime(labels = date_format("%H:%M"))
 ```  
 
-The time interval containing the maximum number of steps is `r dfs %>% filter(avg_steps==max(avg_steps)) %>% select(interval)`.
+(2) The time interval containing the maximum number of steps is `r dfs %>% filter(avg_steps==max(avg_steps)) %>% mutate(interval = format(interval, "%H:%M")) %>% select(interval)`.
+``` {r interval with max steps}
+dfs %>% 
+        filter(avg_steps == max(avg_steps)) %>% 
+        mutate(interval = format(interval, "%H:%M")) %>% 
+        select(interval)
+```  
 
 ## Imputing missing values  
-The number of missing values in the dataset is `r nrow(filter(df, is.na(steps)))`.
-
-To impute the missing values, I will apply the mean for the time of day across all days.  
-```{r}
+(1) The number of missing values in the dataset is `r nrow(filter(df, is.na(steps)))`.
+``` {r missing values}
+nrow(filter(df, is.na(steps)))
+```  
+(2) To impute the missing values, I will apply the mean for the time of day across all days.  
+```{r impute missing values}
 dfn <- left_join(df, dfs, by=c("interval"="interval")) %>%
         do(mutate(., steps = ifelse(is.na(steps), avg_steps, steps))) %>%
         select(-avg_steps)
 ```  
-[See here for usage of "do" in mutate](https://github.com/hadley/dplyr/issues/464)
-
-``` {r}
+[See here for usage of "do" in mutate](https://github.com/hadley/dplyr/issues/464)  
+(3) Create a histogram of the total number of steps taken each day.
+``` {r steps by day 2}
 dfp2 <- dfn %>% 
         group_by(date) %>%
         summarize(total_steps = sum(steps))
@@ -76,15 +105,22 @@ print(head(dfp2))
 ```
 
 A histogram showing this data is as follows:  
-```{r}
-qplot(data = dfp2, x = total_steps)
+```{r histogram 2}
+qplot(data = dfp2, x = total_steps, 
+      xlab = "Number of daily steps")
 ```
 
-## Are there differences in activity patterns between weekdays and weekends?
-```{r}
+## Are there differences in activity patterns between weekdays and weekends?  
+(1) Create a variable for weekdays vs. weekends  
+```{r weekends vs. weekdays}
 dfl <- df %>% 
         filter(!is.na(steps)) %>% 
         mutate(weekday = ifelse(wday(date, label = TRUE) %in% c("Sat", "Sun"), "weekend", "weekday")) %>%
         group_by(interval, weekday) %>%
         summarize(mean_steps = mean(steps))
+```  
+(2) Panel plot of time series across weekdays or weekends  
+``` {r panel plot}
+xyplot(mean_steps ~ interval | weekday, 
+       data=dfl, layout=c(1,2), type="l")
 ```
