@@ -71,11 +71,7 @@ print(head(dfp))
 qplot(data = dfp, x = total_steps, xlab = "Number of daily steps")
 ```
 
-```
-## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
-```
-
-![](PA1_template_files/figure-html/unnamed-chunk-3-1.png) 
+![](PA1_template_files/figure-html/histogram 1-1.png) 
 
 (3) The average number of steps taken per day is 10766 and the median is 10765 as can be seen in the summary table below.  
 
@@ -122,16 +118,21 @@ dfs <- df %>%
         filter(!is.na(steps)) %>% 
         group_by(interval) %>% 
         summarize(avg_steps=mean(steps))
-qplot(data = dfs, x = interval, y = avg_steps, geom = "line", ylab = "Average number of steps per day", xlab = "Time interval") + 
+qplot(data = dfs, x = interval, y = avg_steps, geom = "line", 
+      ylab = "Average number of steps per day", 
+      xlab = "Time interval") + 
         scale_x_datetime(labels = date_format("%H:%M"))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-4-1.png) 
+![](PA1_template_files/figure-html/time series of daily steps-1.png) 
 
 (2) The time interval containing the maximum number of steps is 08:35.
 
 ```r
-dfs %>% filter(avg_steps == max(avg_steps)) %>% mutate(interval = format(interval, "%H:%M")) %>% select(interval)
+dfs %>% 
+        filter(avg_steps == max(avg_steps)) %>% 
+        mutate(interval = format(interval, "%H:%M")) %>% 
+        select(interval)
 ```
 
 ```
@@ -183,14 +184,11 @@ print(head(dfp2))
 A histogram showing this data is as follows:  
 
 ```r
-qplot(data = dfp2, x = total_steps, xlab = "Number of daily steps")
+qplot(data = dfp2, x = total_steps, 
+      xlab = "Number of daily steps")
 ```
 
-```
-## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
-```
-
-![](PA1_template_files/figure-html/unnamed-chunk-7-1.png) 
+![](PA1_template_files/figure-html/histogram 2-1.png) 
 
 ## Are there differences in activity patterns between weekdays and weekends?  
 (1) Create a variable for weekdays vs. weekends  
@@ -205,7 +203,8 @@ dfl <- df %>%
 (2) Panel plot of time series across weekdays or weekends  
 
 ```r
-xyplot(mean_steps ~ interval | weekday, data=dfl, layout=c(1,2), type="l")
+xyplot(mean_steps ~ interval | weekday, 
+       data=dfl, layout=c(1,2), type="l")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-9-1.png) 
+![](PA1_template_files/figure-html/panel plot-1.png) 
